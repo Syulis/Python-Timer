@@ -1,0 +1,12 @@
+{
+   "data_list": [],
+   "config": {
+      "timeout_save": 1,
+      "start_count": 1,
+      "02:30_color": 1,
+      "normal_color": "Black",
+      "mute": 0,
+      "save_minute": 2,
+      "save_second": 30
+   }
+}
