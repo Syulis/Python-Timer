@@ -8,5 +8,11 @@
       "mute": 0,
       "save_minute": 2,
       "save_second": 30
+   },
+   "stat": {
+      "timer_started": 0,
+      "stop_watch_started": 0,
+      "lapped": 0,
+      "retried": 0
    }
 }
