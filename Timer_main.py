@@ -110,7 +110,7 @@ class Timer(tk.Frame):
         fi.pack(fill=tk.BOTH, expand=1)
 
         #バージョン
-        version = 3.7
+        version = 3.8
         ######################
         version_Label = tk.Label(text="ver" + str(version), font=('Meiryo', '15'))
         version_Label.place(x=1190, y=660)
@@ -290,9 +290,14 @@ class Timer(tk.Frame):
         self.log_box.delete(0, tk.END)
         self.log_box.insert(tk.END, "Log")
 
+        #最小化
+        minimize_button = tk.Button(text="Minimize")
+        minimize_button.place(x=1020, y=637.5)
+        minimize_button.bind('<1>', self.minimize)
+
         #終了
         end_button = tk.Button(text="END")
-        end_button.place(x=1067.5, y=637.5)
+        end_button.place(x=1115, y=637.5)
         end_button.bind('<1>', self.end)
 
         # 起動時データ読み込み
@@ -829,6 +834,10 @@ class Timer(tk.Frame):
     def mute_on(self):
         self.mute_var.set(1)
         self.put_log("Blue", "Mute ON")
+
+    #最小化
+    def minimize(self, event):
+        self.master.iconify()
 
     #終了
     def end(self, event):
