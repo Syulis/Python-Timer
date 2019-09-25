@@ -1,12 +1,21 @@
 import tkinter as tk
+from tkinter import filedialog
+from PIL import Image, ImageTk
+import random
+import glob
 import json
 import time
+import math
 import winsound
 
 #保存先ファイル
 save_json = 'Timer_data.json'
 save_file = 'Result.txt'
 url_file = 'Microsoft_Teams_Webhook.txt'
+
+rd = open(save_json, 'r', encoding='UTF-8')
+Timer_data = json.load(rd)
+rd.close()
 
 #Microsoft Teams Webhook
 with open(url_file, 'r') as a:
@@ -17,9 +26,6 @@ class Timer(tk.Frame):
 
     def __init__(self, master):
         tk.Frame.__init__(self, master)
-        rd = open(save_json, 'r', encoding='UTF-8')
-        self.Timer_data = json.load(rd)
-        rd.close()
 
         #サウンドファイル
         self.start_sound_file = 'SE_START.wav'
@@ -31,13 +37,19 @@ class Timer(tk.Frame):
         #フルスクリーン
         self.master.attributes("-fullscreen", True)
 
+        if Timer_data["config"]["background"] == 0:
+            self.master.attributes("-alpha", 1)
+
+        else:
+            self.master.attributes("-alpha", 0.7)
+
         #メニュー
         menu = tk.Menu(self.master)
         self.master.config(menu=menu)
 
         #タイムアウトセーブの有無
         self.save_var = tk.IntVar()
-        self.save_var.set(self.Timer_data["config"]["timeout_save"])
+        self.save_var.set(Timer_data["config"]["timeout_save"])
         menu_save = tk.Menu(self.master)
         menu.add_cascade(label="Timeout Save", menu=menu_save)
         menu_save.add_command(label="Save", command=self.save_trigger_on, activebackground="blue")
@@ -49,7 +61,7 @@ class Timer(tk.Frame):
 
         #スタートカウントの有無
         self.start_count_var = tk.IntVar()
-        self.start_count_var.set(self.Timer_data["config"]["start_count"])
+        self.start_count_var.set(Timer_data["config"]["start_count"])
         menu_start_count = tk.Menu(self.master)
         menu.add_cascade(label="Start Count", menu=menu_start_count)
         menu_start_count.add_command(label="Count", command=self.start_count_trigger_on, activebackground="blue")
@@ -61,7 +73,7 @@ class Timer(tk.Frame):
 
         #ロボコン
         self.color_change_var = tk.IntVar()
-        self.color_change_var.set(self.Timer_data["config"]["02:30_color"])
+        self.color_change_var.set(Timer_data["config"]["02:30_color"])
         menu_0230_color = tk.Menu(self.master)
         menu.add_cascade(label="Robocon 2019", menu=menu_0230_color)
         menu_0230_color.add_command(label="ON", command=self.color_0230_on, activebackground="blue")
@@ -73,7 +85,7 @@ class Timer(tk.Frame):
 
         # ミュート
         self.mute_var = tk.IntVar()
-        self.mute_var.set(self.Timer_data["config"]["mute"])
+        self.mute_var.set(Timer_data["config"]["mute"])
         menu_mute = tk.Menu(self.master)
         menu.add_cascade(label="Mute", menu=menu_mute)
         menu_mute.add_command(label="Mute", command=self.mute_on, activebackground="blue")
@@ -85,7 +97,7 @@ class Timer(tk.Frame):
 
         #ノーマルカラー
         self.normal_color_var = tk.StringVar()
-        self.normal_color_var.set(self.Timer_data["config"]["normal_color"])
+        self.normal_color_var.set(Timer_data["config"]["normal_color"])
         self.fg_color = tk.StringVar()
         self.fg_color.set(self.normal_color_var.get())
         menu_normal_color = tk.Menu(self.master)
@@ -105,19 +117,27 @@ class Timer(tk.Frame):
         self.normal_color = tk.Label(textvariable=self.normal_color_var, font=("Meiryo", "12"), fg=self.fg_color.get())
         self.normal_color.place(x=170, y=650)
 
+        #バックグラウンド
+        menu_back = tk.Menu(self.master)
+        menu.add_cascade(label="Background", menu=menu_back)
+        menu_back.add_command(label="Single", command=self.back_on, activebackground="blue")
+        menu_back.add_command(label="OFF", command=self.back_off, activebackground="red")
+        menu_back.add_command(label="Slide Show", command=self.back_slide, activebackground="green")
+        menu_back.add_command(label="Choice Folder", command=self.back_folder, activebackground="purple")
+
         #決まり文句(？)無くても動く
         fi = tk.Frame(self, relief=tk.RIDGE, bd=4)
         fi.pack(fill=tk.BOTH, expand=1)
 
         #バージョン
-        version = 3.8
+        version = 4.0
         ######################
-        version_Label = tk.Label(text="ver" + str(version), font=('Meiryo', '15'))
+        version_Label = tk.Label(text="ver." + str(version), font=('Meiryo', '15'))
         version_Label.place(x=1190, y=660)
 
         #タイマー単体実行
-        self.minute = self.Timer_data["config"]["save_minute"]
-        self.second = self.Timer_data["config"]["save_second"]
+        self.minute = Timer_data["config"]["save_minute"]
+        self.second = Timer_data["config"]["save_second"]
 
         #カラー設定
         self.time = self.minute * 60 + self.second
@@ -222,6 +242,7 @@ class Timer(tk.Frame):
         self.bind_all('<Alt-R>', self.redisplay)
 
         #リトライ実行
+        self.attention_time = 15
         self.attention_number = tk.StringVar()
         self.attention_number.set(15)
         self.attention_Label = tk.Label(textvariable=self.attention_number, font=("Meiryo", "29"), bg="black",
@@ -290,14 +311,43 @@ class Timer(tk.Frame):
         self.log_box.delete(0, tk.END)
         self.log_box.insert(tk.END, "Log")
 
-        #最小化
-        minimize_button = tk.Button(text="Minimize")
-        minimize_button.place(x=1020, y=637.5)
-        minimize_button.bind('<1>', self.minimize)
+        #バックグラウンド
+        if Timer_data["background"]["folder"] == 0:
+            self.Background_number = Timer_data["config"]["background_number"]
+            fld = filedialog.askdirectory(initialdir="./background_images")
+            Timer_data["background"]["folder"] = fld
+
+        Timer_data["background"]["list"] = glob.glob(str(Timer_data["background"]["folder"]) + "/*")
+        if not Timer_data["background"]["now"] in Timer_data["background"]["list"]:
+            Timer_data["background"]["now"] = random.choice(Timer_data["background"]["list"])
+
+        Timer_data["background"]["mute"] = random.choice(glob.glob("./background_images/mute_images/*.jpg"))
+        print(Timer_data["config"]["background_number"])
+        self.Background = tk.Toplevel()
+        self.Background.attributes("-fullscreen", True)
+        if self.mute_var.get() == 0:
+            self.Back_Image = Image.open(Timer_data["background"]["now"])
+            self.Back_Image = ImageTk.PhotoImage(image=self.Back_Image)
+            self.Back_Label = tk.Label(self.Background, image=self.Back_Image)
+        else:
+            self.Back_Image = Image.open(Timer_data["background"]["mute"])
+            self.Back_Image = ImageTk.PhotoImage(image=self.Back_Image)
+            self.Back_Label = tk.Label(self.Background, image=self.Back_Image)
+        self.Back_Label.pack()
+        self.Background.update()
+        self.master.deiconify()
+        change_background_button = tk.Button(text="Change Background")
+        change_background_button.place(x=970, y=637.5)
+        change_background_button.bind('<1>', self.change_background)
+
+        #プレビュー
+        preview_button = tk.Button(text="Preview")
+        preview_button.place(x=1106, y=637.5)
+        preview_button.bind('<1>', self.preview)
 
         #終了
         end_button = tk.Button(text="END")
-        end_button.place(x=1115, y=637.5)
+        end_button.place(x=1175, y=637.5)
         end_button.bind('<1>', self.end)
 
         # 起動時データ読み込み
@@ -352,8 +402,8 @@ class Timer(tk.Frame):
             self.put_log("red", "Error")
 
         else:
-            self.Timer_data["stat"]["timer_started"] = 0
-            self.Timer_data["stat"]["stop_watch_started"] = 0
+            Timer_data["stat"]["timer_started"] = 0
+            Timer_data["stat"]["stop_watch_started"] = 0
             self.double_reset(event)
             self.color_0230_off()
             self.put_log("blue", "Set")
@@ -361,10 +411,10 @@ class Timer(tk.Frame):
 
     #タイマー開始終了処理
     def start_stop(self, event):
-        if not self.Timer_data["stat"]["timer_started"]:
+        if not Timer_data["stat"]["timer_started"]:
             self.timer_start_Label.configure(text='Click or Enter to Stop')
             self.put_log("green", "Started")
-            self.Timer_data["stat"]["timer_started"] = 1
+            Timer_data["stat"]["timer_started"] = 1
             if self.start_count_var.get() == 1 and self.time == self.minute * 60 + self.second and self.mute_var.get() == 0:
                 winsound.PlaySound(self.start_sound_file, winsound.SND_FILENAME)
                 self.after(0, self.counting)
@@ -374,13 +424,13 @@ class Timer(tk.Frame):
         else:
             self.timer_start_Label.configure(text='Enter to Start or Reset')
             self.put_log("green", "Stopped")
-            self.Timer_data["stat"]["timer_started"] = 0
+            Timer_data["stat"]["timer_started"] = 0
             time.sleep(0.2)
 
     #ストップウォッチ開始終了処理
     def start_stop_watch(self, event):
-        if not self.Timer_data["stat"]["stop_watch_started"]:
-            self.Timer_data["stat"]["stop_watch_started"] = 1
+        if not Timer_data["stat"]["stop_watch_started"]:
+            Timer_data["stat"]["stop_watch_started"] = 1
             self.stop_watch_start_Label.configure(text='Click or Enter to Stop')
             self.put_log("green", "Started")
             if self.start_count_var.get() == 1 and self.time == self.minute * 60 + self.second and self.mute_var.get() == 0:
@@ -391,12 +441,12 @@ class Timer(tk.Frame):
         else:
             self.stop_watch_start_Label.configure(text='Enter to Start or Reset')
             self.put_log("green", "Stopped")
-            self.Timer_data["stat"]["stop_watch_started"] = 0
+            Timer_data["stat"]["stop_watch_started"] = 0
             time.sleep(0.2)
 
     #タイマー処理
     def counting(self):
-        if self.Timer_data["stat"]["timer_started"]:
+        if Timer_data["stat"]["timer_started"]:
             self.time -= 1
             if self.minute == 2 and self.second == 30 and self.color_change_var.get() == 1:
                 if 90 < self.time <= 120:
@@ -424,15 +474,15 @@ class Timer(tk.Frame):
 
     #ストップウォッチ処理
     def watch_counting(self):
-        if self.Timer_data["stat"]["stop_watch_started"]:
+        if Timer_data["stat"]["stop_watch_started"]:
             self.wait_time += 1
             self.after(996, self.watch_counting)
             self.watch_time.set("%02d:%02d" % (self.wait_time / 60, self.wait_time % 60))
 
     #タイマーリセット
     def reset(self, event):
-        if not self.Timer_data["stat"]["timer_started"]:
-            self.Timer_data["stat"]["lapped"] = 0
+        if not Timer_data["stat"]["timer_started"]:
+            Timer_data["stat"]["lapped"] = 0
             self.lap_list.clear()
             self.lap_box.delete("1.0", tk.END)
             self.put_log("orange", "Reset")
@@ -443,7 +493,7 @@ class Timer(tk.Frame):
 
     #ストップウォッチリセット
     def watch_reset(self, event):
-        if not self.Timer_data["stat"]["stop_watch_started"]:
+        if not Timer_data["stat"]["stop_watch_started"]:
             self.put_log("orange", "Reset")
             self.wait_time = 0
             self.watch_time.set("%02d:%02d" % (self.wait_time / 60, self.wait_time % 60))
@@ -458,7 +508,7 @@ class Timer(tk.Frame):
 
     #ラップタイム
     def lap_time(self, event):
-        self.Timer_data["stat"]["lapped"] = 1
+        Timer_data["stat"]["lapped"] = 1
         if self.point.get() == self.max_point:
             self.lap_list.append(
                 "Lap" + str(len(self.lap_list) + 1) + str(".%02d:%02d" % (self.time / 60, self.time % 60)) + " " + \
@@ -475,10 +525,10 @@ class Timer(tk.Frame):
 
     #データセーブ
     def data_save(self, event):
-        self.Timer_data["stat"]["timer_started"] = 0
-        self.Timer_data["stat"]["stop_watch_started"] = 0
-        number = str(len(self.Timer_data["data_list"]) + 1)
-        if not self.Timer_data["stat"]["lapped"]:
+        Timer_data["stat"]["timer_started"] = 0
+        Timer_data["stat"]["stop_watch_started"] = 0
+        number = str(len(Timer_data["data_list"]) + 1)
+        if not Timer_data["stat"]["lapped"]:
             if self.point.get() == self.max_point:
                 Result = str("%02d:%02d" % (self.time / 60, self.time % 60)) + " " + \
                          str((self.minute * 60 + self.second) - self.time) + "秒経過 満点  "
@@ -502,8 +552,8 @@ class Timer(tk.Frame):
 
             Final_Result = number + ". " + Result + "\n"
 
-        self.Timer_data["stat"]["lapped"] = 0
-        self.Timer_data["data_list"].append(str(Result))
+        Timer_data["stat"]["lapped"] = 0
+        Timer_data["data_list"].append(str(Result))
         self.lap_box.delete('1.0', tk.END)
         self.data_box.insert(tk.END, Final_Result)
         self.point.set(0)
@@ -522,21 +572,21 @@ class Timer(tk.Frame):
     #データ消去
     def data_delete(self, event):
         if self.del_box.get() == "all":
-            self.Timer_data["data_list"].clear()
+            Timer_data["data_list"].clear()
             with open(save_json, 'w', encoding='UTF-8') as f:
-                json.dump(self.Timer_data, f, indent=3)
+                json.dump(Timer_data, f, indent=3)
             self.redisplay(event)
             self.put_log("red", "Deleted")
 
         else:
             try:
                 target = int(self.del_box.get()) - 1
-                if target > len(self.Timer_data["data_list"]):
+                if target > len(Timer_data["data_list"]):
                     self.put_log("red", "Error")
                     return
-                del self.Timer_data["data_list"][target]
+                del Timer_data["data_list"][target]
                 with open(save_json, 'w', encoding='UTF-8') as f:
-                    json.dump(self.Timer_data, f, indent=3)
+                    json.dump(Timer_data, f, indent=3)
                 self.redisplay(event)
                 self.put_log("red", "Deleted")
 
@@ -548,7 +598,7 @@ class Timer(tk.Frame):
         try:
             data_number = int(self.data_number_box.get()) - 1
             data_content = str(self.data_exchange_box.get()) + "  "
-            self.Timer_data["data_list"][data_number] = data_content
+            Timer_data["data_list"][data_number] = data_content
             self.data_number_box.delete(0, tk.END)
             self.data_exchange_box.delete(0, tk.END)
             self.redisplay(event)
@@ -560,12 +610,12 @@ class Timer(tk.Frame):
     def data_add(self, event):
         try:
             add_data_content = str(self.data_add_box.get()) + "  "
-            self.Timer_data["data_list"].append(add_data_content)
+            Timer_data["data_list"].append(add_data_content)
             self.data_box.delete('1.0', tk.END)
             self.data_add_box.delete(0, tk.END)
             with open(save_file, 'w', encoding='UTF-8') as f:
                 a = 1
-                for i in self.Timer_data["data_list"]:
+                for i in Timer_data["data_list"]:
                     f.write("{0}. {1}\n".format(a, i))
                     a += 1
 
@@ -585,7 +635,7 @@ class Timer(tk.Frame):
         self.data_exchange_box.delete(0, tk.END)
         with open(save_file, 'w', encoding='UTF-8') as f:
             a = 1
-            for i in self.Timer_data["data_list"]:
+            for i in Timer_data["data_list"]:
                 f.write("{0}. {1}\n".format(a, i))
                 a += 1
 
@@ -634,9 +684,9 @@ class Timer(tk.Frame):
 
     #リトライ
     def retry(self, event):
-        if not self.Timer_data["stat"]["retried"]:
+        if not Timer_data["stat"]["retried"]:
             self.put_log("red", "Retried")
-            self.Timer_data["stat"]["retried"] = 1
+            Timer_data["stat"]["retried"] = 1
             self.your_free_Label.place_forget()
             self.a_attention_Label = tk.Label(text="Don't Move", font=("Meiryo", "29"), bg="black", fg="red")
             self.a_attention_Label.place(x=460, y=636)
@@ -650,33 +700,33 @@ class Timer(tk.Frame):
             self.your_free_Label.place_forget()
 
         self.attention_time -= 1
-        if self.attention_time > 0 and self.Timer_data["stat"]["timer_started"]:
+        if self.attention_time > 0 and Timer_data["stat"]["timer_started"]:
             self.after(1000, self.retry_count)
             self.attention_number.set(self.attention_time)
             self.put_log("red", "Retried")
 
         else:
-            self.Timer_data["stat"]["retried"] = 0
+            Timer_data["stat"]["retried"] = 0
             self.a_attention_Label.place_forget()
             self.attention_Label.place_forget()
             self.your_free_Label.place(x=440, y=636)
             self.attention_time = 15
             self.after(1250, forget)
-            if self.Timer_data["stat"]["timer_started"]:
+            if Timer_data["stat"]["timer_started"]:
                 self.put_log("green", "Started")
             else:
                 self.put_log("green", "Stopped")
 
     #サウンド
     def sound_and_reset(self):
-        self.Timer_data["stat"]["timer_started"] = 0
-        self.Timer_data["stat"]["stop_watch_started"] = 0
+        Timer_data["stat"]["timer_started"] = 0
+        Timer_data["stat"]["stop_watch_started"] = 0
         if self.mute_var.get() == 0:
             winsound.PlaySound(self.end_sound_file, winsound.SND_FILENAME)
         self.timer_start_Label.configure(text='Enter to Start or Reset')
         if self.save_var.get() == 1:
-            number = str(len(self.Timer_data["data_list"]) + 1)
-            if not self.Timer_data["stat"]["lapped"]:
+            number = str(len(Timer_data["data_list"]) + 1)
+            if not Timer_data["stat"]["lapped"]:
                 if self.point.get() == self.max_point:
                     Result = "TIME UP " + \
                                   str((self.minute * 60 + self.second) - self.time) + "秒経過 満点 Time UP  "
@@ -701,8 +751,8 @@ class Timer(tk.Frame):
                         self.point.get()) + "pt  ")
 
                 Final_Result = number + ". " + Result + "\n"
-            self.Timer_data["stat"]["lapped"] = 0
-            self.Timer_data["data_list"].append(str(Result))
+            Timer_data["stat"]["lapped"] = 0
+            Timer_data["data_list"].append(str(Result))
             self.lap_box.delete('1.0', tk.END)
             self.data_box.insert(tk.END, Final_Result)
         else:
@@ -731,9 +781,9 @@ class Timer(tk.Frame):
             myTeamsMessage.text(d)
             myTeamsMessage.send()
             self.data_box.delete('1.0', 'end')
-            self.Timer_data["data_list"].clear()
+            Timer_data["data_list"].clear()
             with open(save_json, 'w', encoding='UTF-8') as a:
-                json.dump(self.Timer_data, a, indent=3)
+                json.dump(Timer_data, a, indent=3)
             with open(save_file, 'w', encoding='UTF-8') as a:
                 a.write("")
             self.send_title.delete(0, tk.END)
@@ -741,6 +791,10 @@ class Timer(tk.Frame):
 
         except:
             self.put_log("red", "Error")
+
+    #バックグラウンド
+    def change_background(self, event):
+        self.back_updata()
 
     #セーブ
     def save_trigger_off(self):
@@ -830,31 +884,88 @@ class Timer(tk.Frame):
     def mute_off(self):
         self.mute_var.set(0)
         self.put_log("Red", "Mute OFF")
+        if Timer_data["config"]["background"] == 0:
+            self.master.attributes("-alpha", 1)
+        self.Back_Image = Image.open(Timer_data["background"]["now"])
+        self.Back_Image = ImageTk.PhotoImage(image=self.Back_Image)
+        self.Back_Label.configure(image=self.Back_Image)
 
     def mute_on(self):
         self.mute_var.set(1)
         self.put_log("Blue", "Mute ON")
+        self.master.attributes("-alpha", 0.7)
+        self.Back_Image = Image.open(Timer_data["background"]["mute"])
+        self.Back_Image = ImageTk.PhotoImage(image=self.Back_Image)
+        self.Back_Label.configure(image=self.Back_Image)
 
-    #最小化
-    def minimize(self, event):
+    #背景表示
+    def back_on(self):
+        Timer_data["config"]["background"] = 1
+        self.master.attributes("-alpha", 0.7)
+
+    def back_off(self):
+        Timer_data["config"]["background"] = 0
+        if self.mute_var.get() == 0:
+            self.master.attributes("-alpha", 1)
+
+    def back_slide(self):
+        Timer_data["config"]["background"] = 2
+        self.slide_running()
+        self.master.attributes("-alpha", 0.7)
+
+    def slide_running(self):
+        if Timer_data["config"]["background"] == 2:
+            self.back_updata()
+            interval = math.floor(self.minute * 60 + self.second * 1000 / len(Timer_data["background"]["list"]) + 10000)
+            self.after(interval, self.slide_running)
+
+    def back_folder(self):
+        fld = filedialog.askdirectory(initialdir="./background_images")
+        Timer_data["background"]["folder"] = fld
+        Timer_data["background"]["list"] = glob.glob(str(Timer_data["background"]["folder"]) + "/*")
+        Timer_data["background"]["now"] = random.choice(Timer_data["background"]["list"])
+        self.back_updata()
+        self.back_on()
+
+    def back_updata(self):
+        if self.Background_number < len(Timer_data["background"]["list"]) - 1:
+            self.Background_number += 1
+        else:
+            self.Background_number = 0
+        Timer_data["background"]["now"] = Timer_data["background"]["list"][self.Background_number]
+        if self.mute_var.get() == 0:
+            self.Back_Image = Image.open(Timer_data["background"]["now"])
+            self.Back_Image = ImageTk.PhotoImage(image=self.Back_Image)
+            self.Back_Label.configure(image=self.Back_Image)
+        else:
+            self.Back_Image = Image.open(Timer_data["background"]["mute"])
+            self.Back_Image = ImageTk.PhotoImage(image=self.Back_Image)
+        self.Back_Label.configure(image=self.Back_Image)
+
+    #プレビュー
+    def preview(self, event):
         self.master.iconify()
+        self.after(1500, self.push)
+
+    def push(self):
+        self.master.deiconify()
 
     #終了
     def end(self, event):
-        self.Timer_data["config"]["timeout_save"] = self.save_var.get()
-        self.Timer_data["config"]["start_count"] = self.start_count_var.get()
-        self.Timer_data["config"]["02:30_color"] = self.color_change_var.get()
-        self.Timer_data["config"]["normal_color"] = self.normal_color_var.get()
-        self.Timer_data["config"]["mute"] = self.mute_var.get()
-        self.Timer_data["config"]["save_minute"] = self.minute
-        self.Timer_data["config"]["save_second"] = self.second
-
-        self.Timer_data["stat"]["timer_started"] = 0
-        self.Timer_data["stat"]["stop_watch_started"] = 0
-        self.Timer_data["stat"]["lapped"] = 0
-        self.Timer_data["stat"]["retried"] = 0
+        Timer_data["config"]["timeout_save"] = self.save_var.get()
+        Timer_data["config"]["start_count"] = self.start_count_var.get()
+        Timer_data["config"]["02:30_color"] = self.color_change_var.get()
+        Timer_data["config"]["normal_color"] = self.normal_color_var.get()
+        Timer_data["config"]["mute"] = self.mute_var.get()
+        Timer_data["config"]["save_minute"] = self.minute
+        Timer_data["config"]["save_second"] = self.second
+        Timer_data["stat"]["timer_started"] = 0
+        Timer_data["stat"]["stop_watch_started"] = 0
+        Timer_data["stat"]["lapped"] = 0
+        Timer_data["stat"]["retried"] = 0
+        Timer_data["config"]["background_number"] = self.Background_number
         with open(save_json, 'w') as a:
-            json.dump(self.Timer_data, a, indent=3)
+            json.dump(Timer_data, a, indent=3)
         self.master.destroy()
 
 if __name__ == '__main__':
