@@ -4,15 +4,24 @@
       "timeout_save": 1,
       "start_count": 1,
       "02:30_color": 1,
+      "background": 0,
       "normal_color": "Black",
       "mute": 0,
       "save_minute": 2,
-      "save_second": 30
+      "save_second": 30,
+      "background_number": 0
    },
    "stat": {
       "timer_started": 0,
       "stop_watch_started": 0,
       "lapped": 0,
       "retried": 0
+   },
+   "background": {
+      "folder": 0,
+      "list": [
+      ],
+      "now": null,
+      "mute": null
    }
 }
