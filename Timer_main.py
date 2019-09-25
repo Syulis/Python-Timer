@@ -130,7 +130,7 @@ class Timer(tk.Frame):
         fi.pack(fill=tk.BOTH, expand=1)
 
         #バージョン
-        version = 4.0
+        version = 4.1
         ######################
         version_Label = tk.Label(text="ver." + str(version), font=('Meiryo', '15'))
         version_Label.place(x=1190, y=660)
@@ -312,8 +312,9 @@ class Timer(tk.Frame):
         self.log_box.insert(tk.END, "Log")
 
         #バックグラウンド
+        self.Background_number = Timer_data["config"]["background_number"]
+
         if Timer_data["background"]["folder"] == 0:
-            self.Background_number = Timer_data["config"]["background_number"]
             fld = filedialog.askdirectory(initialdir="./background_images")
             Timer_data["background"]["folder"] = fld
 
@@ -322,7 +323,6 @@ class Timer(tk.Frame):
             Timer_data["background"]["now"] = random.choice(Timer_data["background"]["list"])
 
         Timer_data["background"]["mute"] = random.choice(glob.glob("./background_images/mute_images/*.jpg"))
-        print(Timer_data["config"]["background_number"])
         self.Background = tk.Toplevel()
         self.Background.attributes("-fullscreen", True)
         if self.mute_var.get() == 0:
